@@ -29,6 +29,11 @@ namespace HyperVUtilities
         private Window? _window;
 
         /// <summary>
+        /// Obtém a janela principal da aplicação
+        /// </summary>
+        public Window? MainWindow => _window;
+
+        /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
@@ -43,8 +48,18 @@ namespace HyperVUtilities
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
-            _window.Activate();
+            try
+            {
+                _window = new MainWindow();
+                _window.Activate();
+            }
+            catch (Exception ex)
+            {
+                // Log error for debugging
+                System.Diagnostics.Debug.WriteLine($"Error launching application: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
     }
 }
