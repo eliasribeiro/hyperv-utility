@@ -17,8 +17,8 @@ namespace HyperVUtilities
             InitializeComponent();
             
             // Navegar para a primeira página por padrão
-            ContentFrame.Navigate(new HostToVmPage());
-            _activeButton = HostToVmButton;
+            ContentFrame.Navigate(new GpuPassthroughPage());
+            _activeButton = GpuPassthroughButton;
         }
 
         private void NavigateToHostToVm(object sender, RoutedEventArgs e)
@@ -43,6 +43,12 @@ namespace HyperVUtilities
         {
             ContentFrame.Navigate(new AboutPage());
             UpdateActiveButton(AboutButton);
+        }
+
+        private void NavigateToGpuPassthrough(object sender, RoutedEventArgs e)
+        {
+            ContentFrame.Navigate(new GpuPassthroughPage());
+            UpdateActiveButton(GpuPassthroughButton);
         }
 
         private void UpdateActiveButton(Button newActiveButton)

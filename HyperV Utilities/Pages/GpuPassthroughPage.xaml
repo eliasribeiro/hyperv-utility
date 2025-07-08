@@ -1,0 +1,66 @@
+<Page x:Class="HyperVUtilities.Pages.GpuPassthroughPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:HyperVUtilities.Pages"
+      Title="Criar VM com GPU (Passthrough)">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Título da página -->
+        <TextBlock Grid.Row="0" 
+                   Text="Criar VM com GPU (Passthrough)" 
+                   FontSize="24" 
+                   FontWeight="SemiBold" />
+
+        <!-- Conteúdo da página -->
+        <Border Grid.Row="2" 
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                    <TextBlock Text="🎮" FontSize="48" Margin="0,0,15,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Configuração GPU Passthrough" 
+                                  FontSize="20" 
+                                  FontWeight="SemiBold"/>
+                        <TextBlock Text="Configure máquinas virtuais com acesso direto à GPU" 
+                                  FontSize="14" 
+                                  Foreground="#666666"/>
+                    </StackPanel>
+                </StackPanel>
+                
+                <TextBlock Text="Esta funcionalidade permitirá criar e configurar máquinas virtuais com GPU passthrough para melhor performance em jogos e aplicações que demandam aceleração gráfica."
+                          FontSize="14"
+                          TextWrapping="Wrap"
+                          Foreground="#666666"
+                          Margin="0,0,0,20"/>
+                
+                <Border Background="#FFF3CD"
+                        BorderBrush="#FFEAA7"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="15">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="⚠️" FontSize="16" Margin="0,0,10,0"/>
+                            <TextBlock Text="Em Desenvolvimento" 
+                                      FontSize="16" 
+                                      FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <TextBlock Text="Esta funcionalidade está em desenvolvimento e será disponibilizada em breve."
+                                  FontSize="14"
+                                  TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page> 
