@@ -8,9 +8,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="20" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="20" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -20,33 +17,8 @@
                    FontSize="24" 
                    FontWeight="SemiBold" />
 
-        <!-- Seção de tema -->
-        <Border Grid.Row="2" 
-                Background="#F8F9FA"
-                BorderBrush="#DEE2E6"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="20">
-            <StackPanel>
-                <TextBlock Text="Aparência" 
-                          FontSize="16" 
-                          FontWeight="SemiBold" 
-                          Margin="0,0,0,15"/>
-                
-                <TextBlock Text="Tema do aplicativo:" 
-                          Margin="0,0,0,10"/>
-                
-                <ComboBox x:Name="ThemeComboBox" 
-                         MinWidth="200">
-                    <ComboBoxItem Content="Padrão do Sistema" IsSelected="True"/>
-                    <ComboBoxItem Content="Claro"/>
-                    <ComboBoxItem Content="Escuro"/>
-                </ComboBox>
-            </StackPanel>
-        </Border>
-
         <!-- Seção de informações -->
-        <Border Grid.Row="4" 
+        <Border Grid.Row="2" 
                 Background="#F8F9FA"
                 BorderBrush="#DEE2E6"
                 BorderThickness="1"
