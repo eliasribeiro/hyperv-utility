@@ -18,49 +18,190 @@
                    FontWeight="SemiBold" />
 
         <!-- Conteúdo da página -->
-        <Border Grid.Row="2" 
-                Background="#F8F9FA"
-                BorderBrush="#DEE2E6"
-                BorderThickness="1"
-                CornerRadius="8"
-                Padding="20">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                    <TextBlock Text="🎮" FontSize="48" Margin="0,0,15,0"/>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Configuração GPU Passthrough" 
-                                  FontSize="20" 
-                                  FontWeight="SemiBold"/>
-                        <TextBlock Text="Configure máquinas virtuais com acesso direto à GPU" 
-                                  FontSize="14" 
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,20,0">
+                <!-- Header -->
+                <Border Background="#F8F9FA"
+                        BorderBrush="#DEE2E6"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20"
+                        Margin="0,0,0,20">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                            <TextBlock Text="🎮" FontSize="48" Margin="0,0,15,0"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Configuração GPU Passthrough" 
+                                          FontSize="20" 
+                                          FontWeight="SemiBold"/>
+                                <TextBlock Text="Configure máquinas virtuais com acesso direto à GPU" 
+                                          FontSize="14" 
+                                          Foreground="#666666"/>
+                            </StackPanel>
+                        </StackPanel>
+                        
+                        <TextBlock Text="Esta funcionalidade permite criar e configurar máquinas virtuais com GPU passthrough para melhor performance em jogos e aplicações que demandam aceleração gráfica."
+                                  FontSize="14"
+                                  TextWrapping="Wrap"
                                   Foreground="#666666"/>
                     </StackPanel>
-                </StackPanel>
-                
-                <TextBlock Text="Esta funcionalidade permitirá criar e configurar máquinas virtuais com GPU passthrough para melhor performance em jogos e aplicações que demandam aceleração gráfica."
-                          FontSize="14"
-                          TextWrapping="Wrap"
-                          Foreground="#666666"
-                          Margin="0,0,0,20"/>
-                
-                <Border Background="#FFF3CD"
+                </Border>
+
+                <!-- Status do Sistema -->
+                <Border Background="#F8F9FA"
+                        BorderBrush="#DEE2E6"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20"
+                        Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Status do Sistema" 
+                                  FontSize="16" 
+                                  FontWeight="SemiBold" 
+                                  Margin="0,0,0,15"/>
+                        
+                        <Button x:Name="CheckCompatibilityButton"
+                                Content="🔍 Verificar Compatibilidade"
+                                Background="#28A745"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Padding="15,10"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Click="CheckCompatibilityButton_Click"
+                                Margin="0,0,0,15">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#218838"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter Property="Background" Value="#1E7E34"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        
+                        <StackPanel x:Name="SystemStatusPanel">
+                            <TextBlock x:Name="SystemStatusText" 
+                                      Text="Clique em 'Verificar Compatibilidade' para verificar o status do sistema"
+                                      FontSize="14"
+                                      Foreground="#666666"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Detecção de GPUs -->
+                <Border Background="#F8F9FA"
+                        BorderBrush="#DEE2E6"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="20"
+                        Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="GPUs Compatíveis" 
+                                  FontSize="16" 
+                                  FontWeight="SemiBold" 
+                                  Margin="0,0,0,15"/>
+                        
+                        <Button x:Name="DetectGpuButton"
+                                Content="🔍 Detectar GPUs"
+                                Background="#007ACC"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Padding="15,10"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Cursor="Hand"
+                                Click="DetectGpuButton_Click"
+                                Margin="0,0,0,15">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        CornerRadius="6"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#005A9E"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed" Value="True">
+                                                        <Setter Property="Background" Value="#004578"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <ListBox x:Name="GpuListBox"
+                                 Background="White"
+                                 BorderBrush="#DEE2E6"
+                                 BorderThickness="1"
+                                 MinHeight="150"
+                                 MaxHeight="300"
+                                 Padding="10"
+                                 FontSize="14"
+                                 Visibility="Collapsed">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="5">
+                                        <TextBlock Text="🎯" FontSize="16" Margin="0,0,10,0"/>
+                                        <TextBlock Text="{Binding}" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock x:Name="GpuStatusText"
+                                  Text="Nenhuma detecção realizada ainda"
+                                  FontSize="14"
+                                  Foreground="#666666"
+                                  Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Avisos -->
+                <Border x:Name="WarningPanel"
+                        Background="#FFF3CD"
                         BorderBrush="#FFEAA7"
                         BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="15">
+                        CornerRadius="8"
+                        Padding="20"
+                        Visibility="Collapsed">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <TextBlock Text="⚠️" FontSize="16" Margin="0,0,10,0"/>
-                            <TextBlock Text="Em Desenvolvimento" 
+                            <TextBlock Text="Avisos do Sistema" 
                                       FontSize="16" 
                                       FontWeight="SemiBold"/>
                         </StackPanel>
-                        <TextBlock Text="Esta funcionalidade está em desenvolvimento e será disponibilizada em breve."
-                                  FontSize="14"
-                                  TextWrapping="Wrap"/>
+                        <StackPanel x:Name="WarningList"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
-        </Border>
+        </ScrollViewer>
     </Grid>
 </Page> 
