@@ -1,0 +1,71 @@
+project_name: HyperVCopyTool
+
+description: Aplicativo desktop com interface WinUI 3 (.NET 9) que permite ao usuário copiar arquivos e pastas para dentro de uma máquina virtual Hyper-V. A interface inclui campos para o nome da VM, o caminho local do arquivo/pasta, o caminho de destino na VM e um botão de ação para iniciar a transferência.
+
+framework: winui3
+dotnet_version: 9
+
+ui:
+  window_title: Copiar para VM (Hyper-V)
+  layout: vertical
+  spacing: 12
+  padding: 20
+
+  controls:
+    - type: TextBlock
+      text: Nome da Máquina Virtual
+      font_weight: bold
+
+    - type: TextBox
+      name: vmNameTextBox
+      placeholder: Digite o nome da VM
+
+    - type: TextBlock
+      text: Caminho do Arquivo ou Pasta no Host
+      font_weight: bold
+
+    - type: StackPanel
+      orientation: horizontal
+      spacing: 6
+      children:
+        - type: TextBox
+          name: hostPathTextBox
+          placeholder: Selecione o arquivo ou pasta
+          width: 400
+        - type: Button
+          name: browseButton
+          content: Procurar
+
+    - type: TextBlock
+      text: Caminho de Destino na VM
+      font_weight: bold
+
+    - type: TextBox
+      name: destinationPathTextBox
+      placeholder: Digite o caminho na VM
+
+    - type: Button
+      name: transferButton
+      content: Transferir Arquivo/Pasta
+      horizontal_alignment: center
+      margin: "20,10,20,0"
+
+logic:
+  - on_click: browseButton
+    action: open_file_or_folder_dialog
+    target: hostPathTextBox
+
+  - on_click: transferButton
+    action: call_function
+    function_name: TransferirParaVM
+
+functions:
+  - name: TransferirParaVM
+    description: Faz a cópia do arquivo ou pasta selecionada para a máquina virtual via PowerShell.
+    steps:
+      - Verificar se todos os campos estão preenchidos
+      - Verificar se a VM existe e está ligada
+      - Compartilhar temporariamente a pasta/arquivo via SMB ou usar PowerShell Direct (Copy-Item com -ToSession)
+      - Usar Enter-PSSession ou Invoke-Command para iniciar sessão com a VM
+      - Copiar o conteúdo para o destino indicado
+      - Exibir mensagem de sucesso ou erro

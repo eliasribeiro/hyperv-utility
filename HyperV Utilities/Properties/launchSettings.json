@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "HyperVFileCopier (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "HyperVFileCopier (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
