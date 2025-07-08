@@ -1,0 +1,182 @@
+<Page x:Class="HyperVUtilities.Pages.HostToVmPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:HyperVUtilities.Pages"
+      Title="Host → VM">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="15" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="30" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Título da página -->
+        <TextBlock Grid.Row="0" 
+                   Text="Transferir Arquivos: Host → VM" 
+                   FontSize="24" 
+                   FontWeight="SemiBold" 
+                   Margin="0,0,0,20"/>
+
+        <!-- Texto informativo -->
+        <Border Grid.Row="1"
+                Background="#FFF3CD"
+                BorderBrush="#FFEAA7"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="15,10">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="⚠️" 
+                         FontSize="16"
+                         Margin="0,0,10,0"
+                         VerticalAlignment="Center"/>
+                <TextBlock Text="Importante: A máquina virtual deve estar ativa/ligada para que a transferência funcione corretamente."
+                          FontSize="13"
+                          TextWrapping="Wrap"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Grupo Máquina Virtual -->
+        <Border Grid.Row="3" 
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <TextBlock Text="Máquina Virtual" 
+                          FontSize="16" 
+                          FontWeight="SemiBold" 
+                          Margin="0,0,0,15"/>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="20" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Nome da VM:" 
+                                  Margin="0,0,0,5"/>
+                        <TextBox x:Name="VmNameTextBox" 
+                                Padding="8"
+                                BorderBrush="#CED4DA"
+                                BorderThickness="1"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Caminho de destino na VM:" 
+                                  Margin="0,0,0,5"/>
+                        <TextBox x:Name="VmDestinationPathTextBox" 
+                                Padding="8"
+                                BorderBrush="#CED4DA"
+                                BorderThickness="1"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- Grupo Host -->
+        <Border Grid.Row="5" 
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <TextBlock Text="Host" 
+                          FontSize="16" 
+                          FontWeight="SemiBold" 
+                          Margin="0,0,0,15"/>
+                
+                <StackPanel>
+                    <TextBlock Text="Arquivo/Pasta local:" 
+                              Margin="0,0,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <TextBox x:Name="LocalPathTextBox" 
+                                Grid.Column="0"
+                                Padding="8"
+                                BorderBrush="#CED4DA"
+                                BorderThickness="1"
+                                IsReadOnly="True" />
+                        
+                        <Button x:Name="BrowseFileButton" 
+                               Grid.Column="2"
+                               Content="Arquivo"
+                               Click="BrowseFileButton_Click"
+                               MinWidth="80" 
+                               Padding="8,6"
+                               Background="#007BFF"
+                               Foreground="White"
+                               BorderThickness="0"
+                               Cursor="Hand"/>
+                        
+                        <Button x:Name="BrowseFolderButton" 
+                               Grid.Column="4"
+                               Content="Pasta"
+                               Click="BrowseFolderButton_Click"
+                               MinWidth="80"
+                               Padding="8,6"
+                               Background="#6C757D"
+                               Foreground="White"
+                               BorderThickness="0"
+                               Cursor="Hand"/>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Botão Transferir -->
+        <Button x:Name="TransferButton" 
+               Grid.Row="7"
+               Click="TransferButton_Click"
+               HorizontalAlignment="Center"
+               MinWidth="150"
+               Padding="15,10"
+               FontSize="14"
+               Background="#28A745"
+               Foreground="White"
+               BorderThickness="0"
+               Cursor="Hand">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="TransferButtonText" 
+                          Text="Transferir" 
+                          VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
+        <!-- Área de status/log -->
+        <Border Grid.Row="9"
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="4"
+                Padding="10">
+            <ScrollViewer>
+                <TextBlock x:Name="StatusTextBlock" 
+                          Text="Pronto para transferir arquivos..."
+                          TextWrapping="Wrap"
+                          FontFamily="Consolas"
+                          FontSize="12" />
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Page> 

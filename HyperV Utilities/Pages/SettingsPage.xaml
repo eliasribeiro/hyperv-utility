@@ -1,0 +1,79 @@
+<Page x:Class="HyperVUtilities.Pages.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:HyperVUtilities.Pages"
+      Title="Configurações">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Título da página -->
+        <TextBlock Grid.Row="0" 
+                   Text="Configurações" 
+                   FontSize="24" 
+                   FontWeight="SemiBold" />
+
+        <!-- Seção de tema -->
+        <Border Grid.Row="2" 
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <TextBlock Text="Aparência" 
+                          FontSize="16" 
+                          FontWeight="SemiBold" 
+                          Margin="0,0,0,15"/>
+                
+                <TextBlock Text="Tema do aplicativo:" 
+                          Margin="0,0,0,10"/>
+                
+                <ComboBox x:Name="ThemeComboBox" 
+                         MinWidth="200">
+                    <ComboBoxItem Content="Padrão do Sistema" IsSelected="True"/>
+                    <ComboBoxItem Content="Claro"/>
+                    <ComboBoxItem Content="Escuro"/>
+                </ComboBox>
+            </StackPanel>
+        </Border>
+
+        <!-- Seção de informações -->
+        <Border Grid.Row="4" 
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <TextBlock Text="Informações" 
+                          FontSize="16" 
+                          FontWeight="SemiBold" 
+                          Margin="0,0,0,15"/>
+                
+                <StackPanel>
+                    <TextBlock Margin="0,0,0,10">
+                        <Run Text="Versão: " FontWeight="SemiBold"/>
+                        <Run Text="1.0.0"/>
+                    </TextBlock>
+                    
+                    <TextBlock Margin="0,0,0,10">
+                        <Run Text="Desenvolvido para: " FontWeight="SemiBold"/>
+                        <Run Text="Windows 10/11 com Hyper-V"/>
+                    </TextBlock>
+                    
+                    <TextBlock Text="Este aplicativo facilita a transferência de arquivos entre o host e máquinas virtuais Hyper-V usando PowerShell Direct."
+                              TextWrapping="Wrap"
+                              Foreground="#666666"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page> 

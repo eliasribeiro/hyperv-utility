@@ -1,0 +1,118 @@
+<Page x:Class="HyperVUtilities.Pages.AboutPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:local="clr-namespace:HyperVUtilities.Pages"
+      Title="Sobre">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="30" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="30" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Título da página -->
+        <TextBlock Grid.Row="0" 
+                   Text="Sobre" 
+                   FontSize="24" 
+                   FontWeight="SemiBold" />
+
+        <!-- Informações do aplicativo -->
+        <Border Grid.Row="2" 
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                    <TextBlock Text="💻" FontSize="48" Margin="0,0,15,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="HyperV Utilities" 
+                                  FontSize="20" 
+                                  FontWeight="SemiBold"/>
+                        <TextBlock Text="Versão 1.0.0" 
+                                  FontSize="14" 
+                                  Foreground="#666666"/>
+                    </StackPanel>
+                </StackPanel>
+                
+                <TextBlock Text="Utilitário para transferência de arquivos entre host e máquinas virtuais Hyper-V"
+                          FontSize="14"
+                          TextWrapping="Wrap"
+                          Foreground="#666666"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Recursos -->
+        <Border Grid.Row="4" 
+                Background="#F8F9FA"
+                BorderBrush="#DEE2E6"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <TextBlock Text="Recursos" 
+                          FontSize="16" 
+                          FontWeight="SemiBold" 
+                          Margin="0,0,0,15"/>
+                
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="✅" FontSize="16" Margin="0,0,15,0"/>
+                        <TextBlock Text="Transferência bidirecional Host ↔ VM"/>
+                    </StackPanel>
+                    
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="✅" FontSize="16" Margin="0,0,15,0"/>
+                        <TextBlock Text="Suporte a arquivos e pastas"/>
+                    </StackPanel>
+                    
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="✅" FontSize="16" Margin="0,0,15,0"/>
+                        <TextBlock Text="Interface moderna com menu lateral"/>
+                    </StackPanel>
+                    
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="✅" FontSize="16" Margin="0,0,15,0"/>
+                        <TextBlock Text="Log em tempo real das operações"/>
+                    </StackPanel>
+                    
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="✅" FontSize="16" Margin="0,0,15,0"/>
+                        <TextBlock Text="Powered by PowerShell Direct"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Requisitos -->
+        <Border Grid.Row="6" 
+                Background="#FFF3CD"
+                BorderBrush="#FFEAA7"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="20">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="⚠️" FontSize="16" Margin="0,0,10,0"/>
+                    <TextBlock Text="Requisitos" 
+                              FontSize="16" 
+                              FontWeight="SemiBold"/>
+                </StackPanel>
+                
+                <StackPanel>
+                    <TextBlock Text="• Windows 10/11 com Hyper-V habilitado" Margin="0,0,0,5"/>
+                    <TextBlock Text="• PowerShell com permissões administrativas" Margin="0,0,0,5"/>
+                    <TextBlock Text="• Máquinas virtuais com Integration Services instalados" Margin="0,0,0,5"/>
+                    <TextBlock Text="• VMs devem estar em execução durante a transferência" Margin="0,0,0,5"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page> 
