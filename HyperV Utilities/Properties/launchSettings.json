@@ -1,10 +1,11 @@
 {
   "profiles": {
-    "HyperVFileCopier (Package)": {
-      "commandName": "MsixPackage"
+    "HyperVUtilities": {
+      "commandName": "Project",
+      "nativeDebugging": false
     },
-    "HyperVFileCopier (Unpackaged)": {
-      "commandName": "Project"
+    "HyperVUtilities (Package)": {
+      "commandName": "MsixPackage"
     }
   }
 }

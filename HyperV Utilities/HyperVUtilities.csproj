@@ -10,9 +10,13 @@
     <UseWinUI>true</UseWinUI>
     <Nullable>enable</Nullable>
     
-    <!-- Configurações para aplicação portátil -->
+    <!-- Configurações para aplicação unpackaged (não empacotada) -->
     <WindowsPackageType>None</WindowsPackageType>
-    <EnableMsixTooling>true</EnableMsixTooling>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <UseWinUIHostingForDebug>false</UseWinUIHostingForDebug>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    
+    <!-- Configurações para aplicação portátil -->
     <PublishSingleFile Condition="'$(Configuration)' == 'Release'">true</PublishSingleFile>
     <SelfContained Condition="'$(Configuration)' == 'Release'">true</SelfContained>
     <PublishTrimmed Condition="'$(Configuration)' == 'Release'">true</PublishTrimmed>
