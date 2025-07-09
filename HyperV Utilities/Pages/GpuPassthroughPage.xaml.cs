@@ -1,80 +1,114 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
+using System.Diagnostics;
+using Microsoft.Win32;
+using System.Windows.Forms;
 
 namespace HyperVUtilities.Pages
 {
     public partial class GpuPassthroughPage : Page
     {
+        private List<string> _detectedGpus;
+
         public GpuPassthroughPage()
         {
             InitializeComponent();
+            _detectedGpus = new List<string>();
+            InitializeDefaultValues();
         }
 
-        private async void CheckCompatibilityButton_Click(object sender, RoutedEventArgs e)
+        private void InitializeDefaultValues()
         {
-            CheckCompatibilityButton.IsEnabled = false;
-            CheckCompatibilityButton.Content = "🔄 Verificando...";
+            // Definir pasta padrão para VHDs
+            string defaultVhdPath = @"C:\Users\Public\Documents\Hyper-V\Virtual Hard Disks\";
+            if (Directory.Exists(defaultVhdPath))
+            {
+                VhdPathTextBox.Text = defaultVhdPath;
+            }
             
-            // Limpar resultados anteriores
-            WarningPanel.Visibility = Visibility.Collapsed;
-            WarningList.Children.Clear();
-            SystemStatusPanel.Children.Clear();
-
-            try
-            {
-                var systemCheck = await CheckSystemCompatibilityAsync();
-                DisplaySystemStatus(systemCheck);
-            }
-            catch (Exception ex)
-            {
-                SystemStatusText.Text = $"Erro ao verificar compatibilidade: {ex.Message}";
-                MessageBox.Show($"Erro: {ex.Message}", "Erro na Verificação", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                CheckCompatibilityButton.IsEnabled = true;
-                CheckCompatibilityButton.Content = "🔍 Verificar Compatibilidade";
-            }
+            // Definir senha padrão se não especificada
+            PasswordTextBox.Text = "CoolestPassword!";
         }
 
         private async void DetectGpuButton_Click(object sender, RoutedEventArgs e)
         {
             DetectGpuButton.IsEnabled = false;
             DetectGpuButton.Content = "🔄 Detectando...";
-            GpuStatusText.Text = "Verificando compatibilidade do sistema...";
-            
-            // Limpar resultados anteriores
-            GpuListBox.Items.Clear();
-            GpuListBox.Visibility = Visibility.Collapsed;
-            WarningPanel.Visibility = Visibility.Collapsed;
-            WarningList.Children.Clear();
-            SystemStatusPanel.Children.Clear();
 
             try
             {
-                var systemCheck = await CheckSystemCompatibilityAsync();
-                DisplaySystemStatus(systemCheck);
+                _detectedGpus.Clear();
+                GpuItemsControl.ItemsSource = null;
 
-                if (systemCheck.IsCompatible)
+                string script = @"
+                    Function Get-VMGpuPartitionAdapterFriendlyName {
+                        try {
+                            $Devices = (Get-WmiObject -Class 'Msvm_PartitionableGpu' -ComputerName $env:COMPUTERNAME -Namespace 'ROOT\virtualization\v2').name
+                            if ($Devices) {
+                                Foreach ($GPU in $Devices) {
+                                    $GPUParse = $GPU.Split('#')[1]
+                                    $DeviceName = Get-WmiObject Win32_PNPSignedDriver | where {$_.HardwareID -eq 'PCI\' + $GPUParse} | select DeviceName -ExpandProperty DeviceName
+                                    if ($DeviceName) {
+                                        Write-Output $DeviceName
+                                    }
+                                }
+                            } else {
+                                Write-Output 'ERRO: Nenhuma GPU compatível encontrada'
+                            }
+                        } catch {
+                            Write-Output 'ERRO: Erro ao detectar GPUs'
+                            Write-Output $_.Exception.Message
+                        }
+                    }
+                    Get-VMGpuPartitionAdapterFriendlyName
+                ";
+
+                var result = await ExecutePowerShellScript(script);
+
+                if (result.StartsWith("ERRO:") || result.Contains("ERRO:"))
                 {
-                    var gpus = await DetectGpusAsync();
-                    DisplayGpuResults(gpus, systemCheck.Warnings);
+                    System.Windows.MessageBox.Show(result, "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
                 else
                 {
-                    GpuStatusText.Text = "Sistema não compatível. Resolva os problemas acima para continuar.";
+                    var gpuLines = result.Split('\n')
+                        .Where(line => !string.IsNullOrWhiteSpace(line) && 
+                                       !line.StartsWith("ERRO:") && 
+                                       !line.Contains("Erro ao detectar GPUs"))
+                        .Select(line => line.Trim())
+                        .ToList();
+
+                    if (gpuLines.Any())
+                    {
+                        _detectedGpus.AddRange(gpuLines);
+                        GpuItemsControl.ItemsSource = _detectedGpus;
+                        GpuListPanel.Visibility = Visibility.Visible;
+                        
+                        // Preencher ComboBox com GPUs detectadas
+                        GpuComboBox.ItemsSource = _detectedGpus;
+                        if (_detectedGpus.Count > 0)
+                        {
+                            GpuComboBox.SelectedIndex = 0;
+                        }
+                        
+                        // Mostrar card de configuração
+                        ConfigCard.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        System.Windows.MessageBox.Show("Nenhuma GPU compatível foi encontrada.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                GpuStatusText.Text = $"Erro ao detectar GPUs: {ex.Message}";
-                MessageBox.Show($"Erro: {ex.Message}", "Erro na Detecção", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"Erro ao detectar GPUs: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -83,277 +117,380 @@ namespace HyperVUtilities.Pages
             }
         }
 
-        private async Task<SystemCompatibilityResult> CheckSystemCompatibilityAsync()
+        private void BrowseIsoButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = new SystemCompatibilityResult();
-            
-            // Script PowerShell para verificação do sistema
-            var script = @"
-                Function Get-DesktopPC {
-                    $isDesktop = $true
-                    if(Get-WmiObject -Class win32_systemenclosure | Where-Object { $_.chassistypes -eq 9 -or $_.chassistypes -eq 10 -or $_.chassistypes -eq 14}) {
-                        Write-Output 'LAPTOP_CHASSIS'
-                        $isDesktop = $false 
-                    }
-                    if (Get-WmiObject -Class win32_battery) { 
-                        Write-Output 'BATTERY_DETECTED'
-                        $isDesktop = $false 
-                    }
-                    $isDesktop
-                }
-
-                Function Get-WindowsCompatibleOS {
-                    $build = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
-                    if ($build.CurrentBuild -ge 19041 -and ($($build.editionid -like 'Professional*') -or $($build.editionid -like 'Enterprise*') -or $($build.editionid -like 'Education*'))) {
-                        Return $true
-                    } Else {
-                        Write-Output 'WINDOWS_INCOMPATIBLE'
-                        Return $false
-                    }
-                }
-
-                Function Get-HyperVEnabled {
-                    if (Get-WindowsOptionalFeature -Online | Where-Object FeatureName -Like 'Microsoft-Hyper-V-All') {
-                        Return $true
-                    } Else {
-                        Write-Output 'HYPERV_DISABLED'
-                        Return $false
-                    }
-                }
-
-                Function Get-WSLEnabled {
-                    try {
-                        if ((wsl -l -v 2>$null)[2].length -gt 1 ) {
-                            Write-Output 'WSL_ENABLED'
-                            Return $true
-                        } Else {
-                            Return $false
-                        }
-                    } catch {
-                        Return $false
-                    }
-                }
-
-                $isDesktop = Get-DesktopPC
-                $isWindowsOK = Get-WindowsCompatibleOS
-                $isHyperVOK = Get-HyperVEnabled
-                $isWSLEnabled = Get-WSLEnabled
-
-                Write-Output ""DESKTOP:$isDesktop""
-                Write-Output ""WINDOWS:$isWindowsOK""
-                Write-Output ""HYPERV:$isHyperVOK""
-                Write-Output ""WSL:$isWSLEnabled""
-            ";
-
-            var output = await ExecutePowerShellAsync(script);
-            
-            foreach (var line in output)
+            var openFileDialog = new Microsoft.Win32.OpenFileDialog
             {
-                if (line.Contains("LAPTOP_CHASSIS"))
-                    result.Warnings.Add("Computador é um laptop. GPUs dedicadas particionadas podem não funcionar com Parsec.");
-                if (line.Contains("BATTERY_DETECTED"))
-                    result.Warnings.Add("Bateria detectada (laptop). GPUs via Thunderbolt 3/4 podem funcionar.");
-                if (line.Contains("WINDOWS_INCOMPATIBLE"))
-                    result.Warnings.Add("Apenas Windows 10 20H1+ ou Windows 11 (Pro/Enterprise/Education) é suportado.");
-                if (line.Contains("HYPERV_DISABLED"))
-                    result.Warnings.Add("Você precisa habilitar Virtualização na BIOS e adicionar o recurso Hyper-V do Windows.");
-                if (line.Contains("WSL_ENABLED"))
-                    result.Warnings.Add("WSL está habilitado. Isso pode interferir com GPU-P e produzir erro 43 na VM.");
+                Title = "Selecionar ISO do Windows 11",
+                Filter = "Arquivos ISO (*.iso)|*.iso|Todos os arquivos (*.*)|*.*",
+                FilterIndex = 1
+            };
 
-                if (line.StartsWith("DESKTOP:"))
-                    result.IsDesktop = line.Split(':')[1] == "True";
-                if (line.StartsWith("WINDOWS:"))
-                    result.IsWindowsCompatible = line.Split(':')[1] == "True";
-                if (line.StartsWith("HYPERV:"))
-                    result.IsHyperVEnabled = line.Split(':')[1] == "True";
+            if (openFileDialog.ShowDialog() == true)
+            {
+                IsoPathTextBox.Text = openFileDialog.FileName;
             }
-
-            result.IsCompatible = result.IsDesktop && result.IsWindowsCompatible && result.IsHyperVEnabled;
-            
-            return result;
         }
 
-        private async Task<List<string>> DetectGpusAsync()
+        private void BrowseVhdPathButton_Click(object sender, RoutedEventArgs e)
         {
-            var script = @"
-                Function Get-VMGpuPartitionAdapterFriendlyName {
-                    try {
-                        $Devices = (Get-WmiObject -Class 'Msvm_PartitionableGpu' -ComputerName $env:COMPUTERNAME -Namespace 'ROOT\virtualization\v2').name
-                        if ($Devices) {
-                            Foreach ($GPU in $Devices) {
-                                $GPUParse = $GPU.Split('#')[1]
-                                $DeviceName = Get-WmiObject Win32_PNPSignedDriver | where {($_.HardwareID -eq ""PCI\$GPUParse"")} | select DeviceName -ExpandProperty DeviceName
-                                if ($DeviceName) {
-                                    Write-Output $DeviceName
-                                }
-                            }
-                        } else {
-                            Write-Output 'NO_GPUS_FOUND'
-                        }
-                    } catch {
-                        Write-Output 'ERROR_DETECTING_GPUS'
-                    }
-                }
-                Get-VMGpuPartitionAdapterFriendlyName
-            ";
-
-            var output = await ExecutePowerShellAsync(script);
-            var gpus = new List<string>();
-
-            foreach (var line in output.Where(l => !string.IsNullOrWhiteSpace(l)))
+            var folderDialog = new FolderBrowserDialog
             {
-                if (line == "NO_GPUS_FOUND" || line == "ERROR_DETECTING_GPUS")
-                    continue;
+                Description = "Selecionar pasta para o HD Virtual",
+                ShowNewFolderButton = true
+            };
+
+            if (folderDialog.ShowDialog() == DialogResult.OK)
+            {
+                VhdPathTextBox.Text = folderDialog.SelectedPath;
+            }
+        }
+
+        private async void CreateVmButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ValidateFields())
+                return;
+
+            CreateVmButton.IsEnabled = false;
+            StatusCard.Visibility = Visibility.Visible;
+            UpdateStatus("Validando configurações...", 10);
+
+            try
+            {
+                // Coletar dados do formulário
+                var vmParams = CollectVmParameters();
                 
-                gpus.Add(line.Trim());
+                UpdateStatus("Preparando script de criação...", 30);
+                
+                // Criar o script PowerShell principal
+                string script = CreateVmScript(vmParams);
+                
+                UpdateStatus("Executando criação da VM...", 50);
+                
+                // Executar o script
+                var result = await ExecutePowerShellScript(script);
+                
+                if (result.Contains("ERRO") || result.Contains("ERROR"))
+                {
+                    UpdateStatus("Erro durante a criação da VM", 100);
+                    System.Windows.MessageBox.Show($"Erro na criação da VM:\n{result}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                else
+                {
+                    UpdateStatus("VM criada com sucesso!", 100);
+                    System.Windows.MessageBox.Show("VM com GPU Passthrough criada com sucesso!\nA VM será iniciada automaticamente.", "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
-
-            return gpus;
+            catch (Exception ex)
+            {
+                UpdateStatus("Erro durante a criação", 100);
+                System.Windows.MessageBox.Show($"Erro ao criar VM: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                CreateVmButton.IsEnabled = true;
+            }
         }
 
-        private async Task<List<string>> ExecutePowerShellAsync(string script)
+        private bool ValidateFields()
+        {
+            var errors = new List<string>();
+
+            if (GpuComboBox.SelectedItem == null)
+                errors.Add("Selecione uma GPU.");
+
+            if (string.IsNullOrWhiteSpace(IsoPathTextBox.Text) || !File.Exists(IsoPathTextBox.Text))
+                errors.Add("Selecione um arquivo ISO válido.");
+
+            if (string.IsNullOrWhiteSpace(VhdPathTextBox.Text) || !Directory.Exists(VhdPathTextBox.Text))
+                errors.Add("Selecione uma pasta válida para o HD Virtual.");
+
+            if (string.IsNullOrWhiteSpace(UsernameTextBox.Text))
+                errors.Add("Informe o nome do usuário.");
+
+            if (!int.TryParse(GpuAllocationTextBox.Text, out int gpuAlloc) || gpuAlloc < 1 || gpuAlloc > 100)
+                errors.Add("Alocação da GPU deve ser entre 1 e 100%.");
+
+            if (!int.TryParse(HdSizeTextBox.Text, out int hdSize) || hdSize < 20)
+                errors.Add("Tamanho do HD deve ser no mínimo 20GB.");
+
+            if (!int.TryParse(RamSizeTextBox.Text, out int ramSize) || ramSize < 4)
+                errors.Add("Tamanho da RAM deve ser no mínimo 4GB.");
+
+            if (errors.Any())
+            {
+                System.Windows.MessageBox.Show(string.Join("\n", errors), "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            return true;
+        }
+
+        private Dictionary<string, object> CollectVmParameters()
+        {
+            return new Dictionary<string, object>
+            {
+                ["VMName"] = "GPUPV",
+                ["SourcePath"] = IsoPathTextBox.Text,
+                ["Edition"] = 6,
+                ["VhdFormat"] = "VHDX",
+                ["DiskLayout"] = "UEFI",
+                ["SizeBytes"] = $"{HdSizeTextBox.Text}GB",
+                ["MemoryAmount"] = $"{RamSizeTextBox.Text}GB",
+                ["CPUCores"] = 4,
+                ["NetworkSwitch"] = "Default Switch",
+                ["VHDPath"] = VhdPathTextBox.Text,
+                ["UnattendPath"] = "$PSScriptRoot\\autounattend.xml",
+                ["GPUName"] = "AUTO", // Sempre usar AUTO conforme script
+                ["GPUResourceAllocationPercentage"] = int.Parse(GpuAllocationTextBox.Text),
+                ["Team_ID"] = "",
+                ["Key"] = "",
+                ["Username"] = UsernameTextBox.Text,
+                ["Password"] = string.IsNullOrWhiteSpace(PasswordTextBox.Text) ? "CoolestPassword!" : PasswordTextBox.Text,
+                ["Autologon"] = AutoLogonCheckBox.IsChecked == true ? "true" : "false"
+            };
+        }
+
+        private string CreateVmScript(Dictionary<string, object> vmParams)
+        {
+            var scriptBuilder = new StringBuilder();
+            
+            // Adicionar parâmetros
+            scriptBuilder.AppendLine("$params = @{");
+            foreach (var param in vmParams)
+            {
+                if (param.Value is string)
+                {
+                    scriptBuilder.AppendLine($"    {param.Key} = \"{param.Value}\"");
+                }
+                else
+                {
+                    scriptBuilder.AppendLine($"    {param.Key} = {param.Value}");
+                }
+            }
+            scriptBuilder.AppendLine("}");
+            
+            // Script simplificado sem dependências externas
+            scriptBuilder.AppendLine(@"
+function Is-Administrator {  
+    $CurrentUser = [Security.Principal.WindowsIdentity]::GetCurrent();
+    (New-Object Security.Principal.WindowsPrincipal $CurrentUser).IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)  
+}
+
+function Test-HyperVEnabled {
+    try {
+        $hyperv = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-All
+        return $hyperv.State -eq 'Enabled'
+    } catch {
+        return $false
+    }
+}
+
+function New-GPUEnabledVM {
+    param(
+        [string]$VMName,
+        [string]$SourcePath,
+        [string]$VHDPath,
+        [int64]$SizeBytes,
+        [int64]$MemoryAmount,
+        [int]$CPUCores,
+        [string]$NetworkSwitch,
+        [string]$Username,
+        [string]$Password
+    )
+    
+    try {
+        Write-Host 'Verificando pré-requisitos...'
+        
+        # Verificar se está executando como administrador
+        if (!(Is-Administrator)) {
+            throw 'Este script deve ser executado como Administrador'
+        }
+        
+        # Verificar se o Hyper-V está habilitado
+        if (!(Test-HyperVEnabled)) {
+            throw 'Hyper-V não está habilitado. Habilite o Hyper-V nas Funcionalidades do Windows'
+        }
+        
+        # Verificar se o ISO existe
+        if (!(Test-Path $SourcePath)) {
+            throw 'Arquivo ISO não encontrado: ' + $SourcePath
+        }
+        
+        # Verificar se a pasta VHD existe
+        if (!(Test-Path $VHDPath)) {
+            throw 'Pasta do VHD não encontrada: ' + $VHDPath
+        }
+        
+        # Verificar se VM já existe
+        if (Get-VM -Name $VMName -ErrorAction SilentlyContinue) {
+            throw 'Uma VM com o nome ' + $VMName + ' já existe'
+        }
+        
+        # Criar caminho completo do VHD
+        $VHDFullPath = Join-Path $VHDPath ($VMName + '.vhdx')
+        
+        if (Test-Path $VHDFullPath) {
+            throw 'Arquivo VHD já existe: ' + $VHDFullPath
+        }
+        
+        Write-Host 'Criando VM básica...'
+        
+        # Criar VM Generation 2 (UEFI)
+        $VM = New-VM -Name $VMName -Generation 2 -MemoryStartupBytes $MemoryAmount -NewVHDPath $VHDFullPath -NewVHDSizeBytes $SizeBytes
+        
+        # Configurar processador
+        Set-VMProcessor -VMName $VMName -Count $CPUCores
+        
+        # Configurar memória
+        Set-VMMemory -VMName $VMName -DynamicMemoryEnabled $false
+        
+        # Adicionar DVD drive e anexar ISO
+        Add-VMDvdDrive -VMName $VMName -Path $SourcePath
+        
+        # Configurar boot order (DVD primeiro)
+        $DVDDrive = Get-VMDvdDrive -VMName $VMName
+        $HardDrive = Get-VMHardDiskDrive -VMName $VMName
+        Set-VMFirmware -VMName $VMName -BootOrder $DVDDrive, $HardDrive
+        
+        # Configurar switch de rede se especificado
+        if ($NetworkSwitch -and $NetworkSwitch -ne '') {
+            if (Get-VMSwitch -Name $NetworkSwitch -ErrorAction SilentlyContinue) {
+                Get-VMNetworkAdapter -VMName $VMName | Connect-VMNetworkAdapter -SwitchName $NetworkSwitch
+            }
+        }
+        
+        # Configurações específicas para GPU Passthrough
+        Write-Host 'Configurando VM para GPU Passthrough...'
+        
+        # Desabilitar checkpoints
+        Set-VM -Name $VMName -CheckpointType Disabled
+        
+        # Configurar memória para GPU
+        Set-VM -Name $VMName -LowMemoryMappedIoSpace 1GB -HighMemoryMappedIoSpace 32GB
+        
+        # Habilitar Guest Control Cache Types
+        Set-VM -Name $VMName -GuestControlledCacheTypes $true
+        
+        # Configurar parada automática
+        Set-VM -Name $VMName -AutomaticStopAction ShutDown
+        
+        # Habilitar TPM e Secure Boot
+        Set-VMKeyProtector -VMName $VMName -NewLocalKeyProtector
+        Enable-VMTPM -VMName $VMName
+        
+        # Detectar e adicionar GPU se disponível
+        try {
+            Write-Host 'Tentando adicionar GPU Passthrough...'
+            $PartitionableGPUs = Get-WmiObject -Class 'Msvm_PartitionableGpu' -Namespace 'ROOT\virtualization\v2' -ErrorAction SilentlyContinue
+            
+            if ($PartitionableGPUs) {
+                # Adicionar primeira GPU disponível
+                $FirstGPU = $PartitionableGPUs[0]
+                Add-VMGpuPartitionAdapter -VMName $VMName -InstancePath $FirstGPU.Name
+                Write-Host 'GPU Passthrough adicionado com sucesso!'
+            } else {
+                Write-Host 'AVISO: Nenhuma GPU compatível encontrada para passthrough'
+            }
+        } catch {
+            Write-Host 'AVISO: Não foi possível adicionar GPU Passthrough: ' + $_.Exception.Message
+        }
+        
+        Write-Host 'VM criada com sucesso: ' + $VMName
+        Write-Host 'Arquivo VHD: ' + $VHDFullPath
+        Write-Host ''
+        Write-Host 'Para iniciar a VM, execute: Start-VM -Name ' + $VMName
+        Write-Host 'Para conectar, execute: vmconnect localhost ' + $VMName
+        
+        return $true
+        
+    } catch {
+        Write-Host 'ERRO: ' + $_.Exception.Message
+        return $false
+    }
+}
+
+try {
+    Write-Host 'Iniciando criação da VM com GPU Passthrough...'
+    Write-Host ('VMName: ' + $params.VMName)
+    Write-Host ('SourcePath: ' + $params.SourcePath)
+    Write-Host ('VHDPath: ' + $params.VHDPath)
+    Write-Host ('SizeBytes: ' + $params.SizeBytes)
+    Write-Host ('MemoryAmount: ' + $params.MemoryAmount)
+    Write-Host ''
+    
+    $success = New-GPUEnabledVM -VMName $params.VMName -SourcePath $params.SourcePath -VHDPath $params.VHDPath -SizeBytes ([int64]($params.SizeBytes.Replace('GB','')) * 1GB) -MemoryAmount ([int64]($params.MemoryAmount.Replace('GB','')) * 1GB) -CPUCores $params.CPUCores -NetworkSwitch $params.NetworkSwitch -Username $params.Username -Password $params.Password
+    
+    if ($success) {
+        Write-Host 'VM criada com sucesso!'
+    } else {
+        Write-Host 'Falha na criação da VM'
+    }
+    
+} catch {
+    Write-Host 'ERRO GERAL: ' + $_.Exception.Message
+}
+");
+            
+            return scriptBuilder.ToString();
+        }
+
+        private void UpdateStatus(string message, int progress)
+        {
+            StatusTextBlock.Text = message;
+            ProgressBar.Value = progress;
+        }
+
+        private async Task<string> ExecutePowerShellScript(string script)
         {
             return await Task.Run(() =>
             {
-                var output = new List<string>();
-                
                 try
                 {
+                    // Criar arquivo temporário para o script
+                    string tempFile = Path.GetTempFileName() + ".ps1";
+                    File.WriteAllText(tempFile, script, Encoding.UTF8);
+
                     var startInfo = new ProcessStartInfo
                     {
                         FileName = "powershell.exe",
-                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
+                        Arguments = $"-ExecutionPolicy Bypass -File \"{tempFile}\"",
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
-                        CreateNoWindow = true
+                        CreateNoWindow = true,
+                        StandardOutputEncoding = Encoding.UTF8,
+                        StandardErrorEncoding = Encoding.UTF8
                     };
 
                     using (var process = Process.Start(startInfo))
                     {
                         if (process != null)
                         {
-                            var result = process.StandardOutput.ReadToEnd();
-                            var error = process.StandardError.ReadToEnd();
+                            string output = process.StandardOutput.ReadToEnd();
+                            string error = process.StandardError.ReadToEnd();
                             
                             process.WaitForExit();
 
-                            if (!string.IsNullOrEmpty(result))
-                            {
-                                output.AddRange(result.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
-                            }
+                            // Limpar arquivo temporário
+                            try { File.Delete(tempFile); } catch { }
 
                             if (!string.IsNullOrEmpty(error))
                             {
-                                output.Add($"ERROR: {error}");
+                                return $"ERRO: {error}";
                             }
+
+                            return output;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    output.Add($"EXCEPTION: {ex.Message}");
+                    return $"ERRO: {ex.Message}";
                 }
 
-                return output;
+                return "ERRO: Não foi possível executar o script";
             });
         }
-
-        private void DisplaySystemStatus(SystemCompatibilityResult result)
-        {
-            SystemStatusPanel.Children.Clear();
-
-            // Status geral
-            var statusIcon = result.IsCompatible ? "✅" : "❌";
-            var statusText = result.IsCompatible ? "Sistema Compatível" : "Sistema Incompatível";
-            var statusColor = result.IsCompatible ? Brushes.Green : Brushes.Red;
-
-            var statusBlock = new TextBlock
-            {
-                Text = $"{statusIcon} {statusText}",
-                FontSize = 16,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = statusColor,
-                Margin = new Thickness(0, 0, 0, 10)
-            };
-            SystemStatusPanel.Children.Add(statusBlock);
-
-            // Detalhes
-            AddStatusItem("Desktop PC", result.IsDesktop);
-            AddStatusItem("Windows Compatível", result.IsWindowsCompatible);
-            AddStatusItem("Hyper-V Habilitado", result.IsHyperVEnabled);
-
-            // Mostrar avisos se houver
-            if (result.Warnings.Any())
-            {
-                DisplayWarnings(result.Warnings);
-            }
-        }
-
-        private void AddStatusItem(string label, bool status)
-        {
-            var icon = status ? "✅" : "❌";
-            var color = status ? Brushes.Green : Brushes.Red;
-            
-            var statusBlock = new TextBlock
-            {
-                Text = $"{icon} {label}",
-                FontSize = 14,
-                Foreground = color,
-                Margin = new Thickness(20, 0, 0, 5)
-            };
-            
-            SystemStatusPanel.Children.Add(statusBlock);
-        }
-
-        private void DisplayWarnings(List<string> warnings)
-        {
-            WarningList.Children.Clear();
-            
-            foreach (var warning in warnings)
-            {
-                var warningBlock = new TextBlock
-                {
-                    Text = $"• {warning}",
-                    FontSize = 14,
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 0, 0, 5)
-                };
-                
-                WarningList.Children.Add(warningBlock);
-            }
-            
-            WarningPanel.Visibility = Visibility.Visible;
-        }
-
-        private void DisplayGpuResults(List<string> gpus, List<string> warnings)
-        {
-            if (gpus.Any())
-            {
-                GpuListBox.Items.Clear();
-                foreach (var gpu in gpus)
-                {
-                    GpuListBox.Items.Add(gpu);
-                }
-                
-                GpuListBox.Visibility = Visibility.Visible;
-                GpuStatusText.Text = $"✅ {gpus.Count} GPU(s) compatível(is) encontrada(s)";
-                GpuStatusText.Foreground = Brushes.Green;
-            }
-            else
-            {
-                GpuStatusText.Text = "❌ Nenhuma GPU compatível encontrada";
-                GpuStatusText.Foreground = Brushes.Red;
-            }
-        }
     }
-
-    public class SystemCompatibilityResult
-    {
-        public bool IsCompatible { get; set; }
-        public bool IsDesktop { get; set; }
-        public bool IsWindowsCompatible { get; set; }
-        public bool IsHyperVEnabled { get; set; }
-        public List<string> Warnings { get; set; } = new List<string>();
-    }
-} 
+}
