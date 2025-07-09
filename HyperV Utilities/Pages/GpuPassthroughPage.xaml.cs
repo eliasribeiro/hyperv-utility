@@ -9,6 +9,8 @@ using System.Windows.Controls;
 using System.Diagnostics;
 using Microsoft.Win32;
 using System.Windows.Forms;
+using System.Security.Principal;
+using System.Windows.Media; // Added for SolidColorBrush
 
 namespace HyperVUtilities.Pages
 {
@@ -55,17 +57,35 @@ namespace HyperVUtilities.Pages
                                     $GPUParse = $GPU.Split('#')[1]
                                     $DeviceName = Get-WmiObject Win32_PNPSignedDriver | where {$_.HardwareID -eq 'PCI\' + $GPUParse} | select DeviceName -ExpandProperty DeviceName
                                     if ($DeviceName) {
-                                        Write-Output $DeviceName
+                                        # Limpar o nome da GPU de forma mais robusta
+                                        $CleanName = $DeviceName
+                                        # Remover caracteres especiais comuns
+                                        $CleanName = $CleanName -replace '\(TM\)', '™'
+                                        $CleanName = $CleanName -replace '\(R\)', '®'
+                                        $CleanName = $CleanName -replace '\(C\)', '©'
+                                        $CleanName = $CleanName -replace '\(tm\)', '™'
+                                        $CleanName = $CleanName -replace '\(r\)', '®'
+                                        $CleanName = $CleanName -replace '\(c\)', '©'
+                                        # Corrigir espaçamentos
+                                        $CleanName = $CleanName -replace '\s+', ' '
+                                        $CleanName = $CleanName.Trim()
+                                        # Garantir que nomes comuns apareçam corretamente
+                                        if ($CleanName -match 'Radeon') {
+                                            $CleanName = $CleanName -replace 'MD\s*Radeon', 'AMD Radeon'
+                                            $CleanName = $CleanName -replace 'RadeaonT', 'Radeon™'
+                                            $CleanName = $CleanName -replace 'RadeonT', 'Radeon™'
+                                        }
+                                        Write-Output $CleanName
                                     }
                                 }
                             } else {
                                 Write-Output 'ERRO: Nenhuma GPU compatível encontrada'
                             }
                         } catch {
-                            Write-Output 'ERRO: Erro ao detectar GPUs'
-                            Write-Output $_.Exception.Message
+                            Write-Output 'ERRO: Erro ao detectar GPUs compatíveis'
                         }
                     }
+                    
                     Get-VMGpuPartitionAdapterFriendlyName
                 ";
 
@@ -86,19 +106,43 @@ namespace HyperVUtilities.Pages
 
                     if (gpuLines.Any())
                     {
-                        _detectedGpus.AddRange(gpuLines);
-                        GpuItemsControl.ItemsSource = _detectedGpus;
+                        GpuListPanel.Children.Clear();
+                        _detectedGpus = gpuLines;
+
+                        foreach (var gpu in gpuLines)
+                        {
+                            var gpuCard = new Border
+                            {
+                                Background = new SolidColorBrush(Color.FromArgb(255, 240, 248, 255)),
+                                CornerRadius = new CornerRadius(4),
+                                Padding = new Thickness(10),
+                                Margin = new Thickness(0, 5, 0, 5)
+                            };
+
+                            var gpuText = new TextBlock
+                            {
+                                Text = gpu,
+                                FontSize = 14,
+                                Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 100, 0))
+                            };
+
+                            gpuCard.Child = gpuText;
+                            GpuListPanel.Children.Add(gpuCard);
+                        }
+
+                        // Tornar o painel visível
                         GpuListPanel.Visibility = Visibility.Visible;
-                        
-                        // Preencher ComboBox com GPUs detectadas
-                        GpuComboBox.ItemsSource = _detectedGpus;
+
+                        // Atualizar ComboBox
+                        GpuComboBox.Items.Clear();
+                        foreach (var gpu in _detectedGpus)
+                        {
+                            GpuComboBox.Items.Add(gpu);
+                        }
                         if (_detectedGpus.Count > 0)
                         {
                             GpuComboBox.SelectedIndex = 0;
                         }
-                        
-                        // Mostrar card de configuração
-                        ConfigCard.Visibility = Visibility.Visible;
                     }
                     else
                     {
@@ -122,7 +166,7 @@ namespace HyperVUtilities.Pages
             var openFileDialog = new Microsoft.Win32.OpenFileDialog
             {
                 Title = "Selecionar ISO do Windows 11",
-                Filter = "Arquivos ISO (*.iso)|*.iso|Todos os arquivos (*.*)|*.*",
+                Filter = "Arquivos ISO (*.iso)|*.iso",
                 FilterIndex = 1
             };
 
@@ -134,15 +178,15 @@ namespace HyperVUtilities.Pages
 
         private void BrowseVhdPathButton_Click(object sender, RoutedEventArgs e)
         {
-            var folderDialog = new FolderBrowserDialog
+            using (var folderDialog = new System.Windows.Forms.FolderBrowserDialog())
             {
-                Description = "Selecionar pasta para o HD Virtual",
-                ShowNewFolderButton = true
-            };
+                folderDialog.Description = "Selecionar pasta para o HD Virtual";
+                folderDialog.ShowNewFolderButton = true;
 
-            if (folderDialog.ShowDialog() == DialogResult.OK)
-            {
-                VhdPathTextBox.Text = folderDialog.SelectedPath;
+                if (folderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    VhdPathTextBox.Text = folderDialog.SelectedPath;
+                }
             }
         }
 
@@ -150,6 +194,35 @@ namespace HyperVUtilities.Pages
         {
             if (!ValidateFields())
                 return;
+
+            // Verificar se está executando como administrador
+            if (!IsRunningAsAdministrator())
+            {
+                var result = System.Windows.MessageBox.Show(
+                    "Esta operação requer privilégios de administrador.\n\nDeseja executar como administrador?",
+                    "Permissões Necessárias",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        RestartAsAdministrator();
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Windows.MessageBox.Show($"Erro ao solicitar privilégios de administrador: {ex.Message}", 
+                            "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    return;
+                }
+            }
 
             CreateVmButton.IsEnabled = false;
             StatusCard.Visibility = Visibility.Visible;
@@ -196,30 +269,70 @@ namespace HyperVUtilities.Pages
         {
             var errors = new List<string>();
 
+            // Validar Nome da VM
+            if (string.IsNullOrWhiteSpace(VmNameTextBox.Text))
+            {
+                errors.Add("Nome da VM é obrigatório");
+            }
+            else if (VmNameTextBox.Text.Length < 3)
+            {
+                errors.Add("Nome da VM deve ter pelo menos 3 caracteres");
+            }
+
+            // Validar GPU selecionada
             if (GpuComboBox.SelectedItem == null)
-                errors.Add("Selecione uma GPU.");
+            {
+                errors.Add("Selecione uma GPU da lista");
+            }
 
-            if (string.IsNullOrWhiteSpace(IsoPathTextBox.Text) || !File.Exists(IsoPathTextBox.Text))
-                errors.Add("Selecione um arquivo ISO válido.");
+            // Validar ISO
+            if (string.IsNullOrWhiteSpace(IsoPathTextBox.Text))
+            {
+                errors.Add("Selecione um arquivo ISO do Windows 11");
+            }
+            else if (!File.Exists(IsoPathTextBox.Text))
+            {
+                errors.Add("Arquivo ISO não encontrado");
+            }
 
-            if (string.IsNullOrWhiteSpace(VhdPathTextBox.Text) || !Directory.Exists(VhdPathTextBox.Text))
-                errors.Add("Selecione uma pasta válida para o HD Virtual.");
+            // Validar tamanho do HD
+            if (!int.TryParse(HdSizeTextBox.Text, out int hdSize) || hdSize < 20 || hdSize > 2000)
+            {
+                errors.Add("Tamanho do HD deve estar entre 20 e 2000 GB");
+            }
 
+            // Validar tamanho da RAM
+            if (!int.TryParse(RamSizeTextBox.Text, out int ramSize) || ramSize < 2 || ramSize > 128)
+            {
+                errors.Add("Tamanho da RAM deve estar entre 2 e 128 GB");
+            }
+
+            // Validar alocação da GPU
+            if (!int.TryParse(GpuAllocationTextBox.Text, out int gpuAllocation) || gpuAllocation < 10 || gpuAllocation > 100)
+            {
+                errors.Add("Alocação da GPU deve estar entre 10 e 100%");
+            }
+
+            // Validar local do HD virtual
+            if (string.IsNullOrWhiteSpace(VhdPathTextBox.Text))
+            {
+                errors.Add("Selecione um local para o HD virtual");
+            }
+            else if (!Directory.Exists(VhdPathTextBox.Text))
+            {
+                errors.Add("Pasta do HD virtual não encontrada");
+            }
+
+            // Validar usuário
             if (string.IsNullOrWhiteSpace(UsernameTextBox.Text))
-                errors.Add("Informe o nome do usuário.");
-
-            if (!int.TryParse(GpuAllocationTextBox.Text, out int gpuAlloc) || gpuAlloc < 1 || gpuAlloc > 100)
-                errors.Add("Alocação da GPU deve ser entre 1 e 100%.");
-
-            if (!int.TryParse(HdSizeTextBox.Text, out int hdSize) || hdSize < 20)
-                errors.Add("Tamanho do HD deve ser no mínimo 20GB.");
-
-            if (!int.TryParse(RamSizeTextBox.Text, out int ramSize) || ramSize < 4)
-                errors.Add("Tamanho da RAM deve ser no mínimo 4GB.");
+            {
+                errors.Add("Nome do usuário é obrigatório");
+            }
 
             if (errors.Any())
             {
-                System.Windows.MessageBox.Show(string.Join("\n", errors), "Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
+                string errorMessage = "Corrija os seguintes erros:\n\n" + string.Join("\n", errors);
+                System.Windows.MessageBox.Show(errorMessage, "Erro de Validação", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
@@ -230,23 +343,19 @@ namespace HyperVUtilities.Pages
         {
             return new Dictionary<string, object>
             {
-                ["VMName"] = "GPUPV",
-                ["SourcePath"] = IsoPathTextBox.Text,
-                ["Edition"] = 6,
+                ["VMName"] = VmNameTextBox.Text.Trim(),
+                ["SourcePath"] = IsoPathTextBox.Text.Trim(),
                 ["VhdFormat"] = "VHDX",
                 ["DiskLayout"] = "UEFI",
                 ["SizeBytes"] = $"{HdSizeTextBox.Text}GB",
                 ["MemoryAmount"] = $"{RamSizeTextBox.Text}GB",
-                ["CPUCores"] = 4,
+                ["CPUCores"] = "4",
                 ["NetworkSwitch"] = "Default Switch",
-                ["VHDPath"] = VhdPathTextBox.Text,
-                ["UnattendPath"] = "$PSScriptRoot\\autounattend.xml",
-                ["GPUName"] = "AUTO", // Sempre usar AUTO conforme script
-                ["GPUResourceAllocationPercentage"] = int.Parse(GpuAllocationTextBox.Text),
-                ["Team_ID"] = "",
-                ["Key"] = "",
-                ["Username"] = UsernameTextBox.Text,
-                ["Password"] = string.IsNullOrWhiteSpace(PasswordTextBox.Text) ? "CoolestPassword!" : PasswordTextBox.Text,
+                ["VHDPath"] = VhdPathTextBox.Text.Trim(),
+                ["GPUName"] = GpuComboBox.SelectedItem?.ToString() ?? "AUTO",
+                ["GPUResourceAllocationPercentage"] = GpuAllocationTextBox.Text,
+                ["Username"] = UsernameTextBox.Text.Trim(),
+                ["Password"] = string.IsNullOrWhiteSpace(PasswordTextBox.Text) ? "Windows123!" : PasswordTextBox.Text,
                 ["Autologon"] = AutoLogonCheckBox.IsChecked == true ? "true" : "false"
             };
         }
@@ -449,12 +558,14 @@ try {
                 {
                     // Criar arquivo temporário para o script
                     string tempFile = Path.GetTempFileName() + ".ps1";
-                    File.WriteAllText(tempFile, script, Encoding.UTF8);
+                    
+                    // Salvar com encoding UTF-8 com BOM para suporte completo a caracteres
+                    File.WriteAllText(tempFile, script, new UTF8Encoding(true));
 
                     var startInfo = new ProcessStartInfo
                     {
                         FileName = "powershell.exe",
-                        Arguments = $"-ExecutionPolicy Bypass -File \"{tempFile}\"",
+                        Arguments = $"-ExecutionPolicy Bypass -NoProfile -InputFormat None -OutputFormat Text -File \"{tempFile}\"",
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
@@ -462,6 +573,10 @@ try {
                         StandardOutputEncoding = Encoding.UTF8,
                         StandardErrorEncoding = Encoding.UTF8
                     };
+
+                    // Configurar variáveis de ambiente para UTF-8
+                    startInfo.Environment["POWERSHELL_TELEMETRY_OPTOUT"] = "1";
+                    startInfo.Environment["PSModulePath"] = "";
 
                     using (var process = Process.Start(startInfo))
                     {
@@ -477,9 +592,13 @@ try {
 
                             if (!string.IsNullOrEmpty(error))
                             {
+                                // Limpar caracteres de controle que podem causar problemas de codificação
+                                error = CleanOutputString(error);
                                 return $"ERRO: {error}";
                             }
 
+                            // Limpar caracteres de controle da saída
+                            output = CleanOutputString(output);
                             return output;
                         }
                     }
@@ -491,6 +610,65 @@ try {
 
                 return "ERRO: Não foi possível executar o script";
             });
+        }
+
+        private string CleanOutputString(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            // Remover caracteres de controle e BOM
+            var cleanChars = input.Where(c => !char.IsControl(c) || c == '\r' || c == '\n' || c == '\t').ToArray();
+            string cleaned = new string(cleanChars);
+            
+            // Remover BOM UTF-8 se presente
+            if (cleaned.StartsWith("\uFEFF"))
+                cleaned = cleaned.Substring(1);
+                
+            return cleaned.Trim();
+        }
+
+        private bool IsRunningAsAdministrator()
+        {
+            try
+            {
+                var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                var principal = new System.Security.Principal.WindowsPrincipal(identity);
+                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void RestartAsAdministrator()
+        {
+            var currentProcess = Process.GetCurrentProcess();
+            var mainModule = currentProcess.MainModule;
+            
+            if (mainModule?.FileName == null)
+            {
+                throw new InvalidOperationException("Não foi possível obter o caminho do executável atual");
+            }
+
+            var processInfo = new ProcessStartInfo
+            {
+                UseShellExecute = true,
+                WorkingDirectory = Environment.CurrentDirectory,
+                FileName = mainModule.FileName,
+                Verb = "runas"
+            };
+
+            try
+            {
+                Process.Start(processInfo);
+                System.Windows.Application.Current.Shutdown();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Não foi possível solicitar privilégios de administrador: {ex.Message}");
+            }
         }
     }
 }
